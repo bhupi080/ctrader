@@ -8,7 +8,8 @@ The codebase follows a scalable layout:
 
 - `src/app/api` - HTTP routing layer
 - `src/app/schemas` - request/response contracts
-- `src/app/services` - cTrader gateway and business logic
+- `src/app/services` - domain services and orchestration
+- `src/app/services/ctrader` - cTrader Open API transport and protocol clients
 - `src/app/core` - settings and application state
 
 ## Setup

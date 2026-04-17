@@ -1,27 +1,12 @@
 from fastapi import APIRouter, Depends
 
-from app.api.dependencies import get_gateway
-from app.core.config import get_settings
-from app.schemas.accounts import AccountInfo, AccountsInfoResponse
-from app.services.ctrader_gateway import CTraderGateway
+from app.api.dependencies import get_account_service
+from app.schemas.accounts import AccountsInfoResponse
+from app.services.account_service import AccountService
 
 router = APIRouter(prefix="/account", tags=["account"])
 
 
 @router.get("/info", response_model=AccountsInfoResponse)
-def get_accounts_info(gateway: CTraderGateway = Depends(get_gateway)) -> AccountsInfoResponse:
-    settings = get_settings()
-    accounts = gateway.get_accounts()
-    trader_info = gateway.get_trader_info(settings.ctrader_account_id)
-    return AccountsInfoResponse(
-        default_account_id=settings.ctrader_account_id,
-        accounts=[
-            AccountInfo(
-                account_id=account.account_id,
-                is_live=account.is_live,
-                trader_login=account.trader_login,
-            )
-            for account in accounts
-        ],
-        trader=trader_info,
-    )
+def get_accounts_info(service: AccountService = Depends(get_account_service)) -> AccountsInfoResponse:
+    return service.get_accounts_info()

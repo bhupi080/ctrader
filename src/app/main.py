@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from app.api.router import api_router
 from app.core import state
 from app.core.config import get_settings
-from app.services.ctrader_gateway import CTraderGateway
+from app.services.ctrader import CTraderGateway
 from app.services.exceptions import CTraderApiError, CTraderServiceError, CTraderTimeoutError
 
 

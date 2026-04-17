@@ -1,4 +1,4 @@
-from app.services.ctrader_gateway import CTraderGateway
+from app.services.ctrader import CTraderGateway
 
 
 gateway: CTraderGateway | None = None
