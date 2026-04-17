@@ -1,36 +1,61 @@
-# cTrader Open API starter (uv)
+# cTrader Trading API (FastAPI + Open API)
 
-This project provides a minimal Python starter for connecting to cTrader Open API via the official Python SDK.
+Structured FastAPI service built on top of the official cTrader Open API Python SDK.
 
-## 1) Install dependencies
+## Architecture
+
+The codebase follows a scalable layout:
+
+- `src/app/api` - HTTP routing layer
+- `src/app/schemas` - request/response contracts
+- `src/app/services` - cTrader gateway and business logic
+- `src/app/core` - settings and application state
+
+## Setup
+
+1. Install dependencies:
 
 ```powershell
 uv sync
 ```
 
-## 2) Configure environment
+2. Copy `.env.example` to `.env` and set values:
 
-Copy `.env.example` to `.env` and fill values:
+- `CTRADER_HOST` (`demo` or `live`)
+- `CTRADER_CLIENT_ID`
+- `CTRADER_CLIENT_SECRET`
+- `CTRADER_ACCOUNT_ID`
+- `CTRADER_ACCESS_TOKEN`
+- `CTRADER_REQUEST_TIMEOUT_SECONDS` (optional)
 
-- `CTRADER_HOST`: `demo` or `live`
-- `CTRADER_CLIENT_ID`: Open API app client ID
-- `CTRADER_CLIENT_SECRET`: Open API app client secret
-- `CTRADER_ACCOUNT_ID`: your cTrader account ID (integer)
-- `CTRADER_ACCESS_TOKEN`: cTrader ID OAuth access token
-
-## 3) Run
+3. Start API server:
 
 ```powershell
 uv run main.py
 ```
 
-Expected successful flow:
+Server runs at `http://localhost:8000` by default.
 
-1. Connect to endpoint
-2. Application auth success
-3. Account auth success
+## Endpoints (v1)
 
-## Notes
+- `GET /health` - health check
+- `GET /api/v1/accounts/info` - list token-linked accounts and trader details
+- `POST /api/v1/trades` - place market order on configured account
 
-- This flow uses cTrader ID access token for account auth.
-- If you only have broker password, generate OAuth token first in the cTrader Open API auth flow.
+## Trade Request Example
+
+```json
+{
+  "symbol_name": "EURUSD",
+  "side": "BUY",
+  "volume_lots": 0.1,
+  "label": "test-order",
+  "comment": "api test"
+}
+```
+
+## Important Notes
+
+- Keep trading calls on demo until fully validated.
+- Open API limits still apply (50 req/s non-historical, 5 req/s historical per connection).
+- Use OAuth access token flow as documented by cTrader.
