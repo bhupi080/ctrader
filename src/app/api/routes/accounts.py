@@ -5,7 +5,7 @@ from app.core.config import get_settings
 from app.schemas.accounts import AccountInfo, AccountsInfoResponse
 from app.services.ctrader_gateway import CTraderGateway
 
-router = APIRouter(prefix="/accounts", tags=["accounts"])
+router = APIRouter(prefix="/account", tags=["account"])
 
 
 @router.get("/info", response_model=AccountsInfoResponse)

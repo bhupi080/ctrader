@@ -34,13 +34,13 @@ uv sync
 uv run main.py
 ```
 
-Server runs at `http://localhost:8000` by default.
+Server runs at `http://localhost:80` by default.
 
-## Endpoints (v1)
+## Endpoints
 
 - `GET /health` - health check
-- `GET /api/v1/accounts/info` - list token-linked accounts and trader details
-- `POST /api/v1/trades` - place market order on configured account
+- `GET /api/ctrader/account/info` - list token-linked accounts and trader details
+- `POST /api/ctrader/trade` - place market order on configured account
 
 ## Trade Request Example
 

@@ -5,7 +5,7 @@ from app.core.config import get_settings
 from app.schemas.trades import PlaceTradeRequest, PlaceTradeResponse
 from app.services.ctrader_gateway import CTraderGateway
 
-router = APIRouter(prefix="/trades", tags=["trades"])
+router = APIRouter(prefix="/trade", tags=["trade"])
 
 
 @router.post("", response_model=PlaceTradeResponse)
