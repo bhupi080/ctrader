@@ -39,8 +39,9 @@ Server runs at `http://localhost:80` by default.
 ## Endpoints
 
 - `GET /health` - health check
-- `GET /api/ctrader/account/info` - list token-linked accounts and trader details
-- `POST /api/ctrader/trade` - place market order on configured account
+- `GET /api/account/info` - list token-linked accounts and trader details
+- `POST /api/trade` - place market order on configured account
+- `GET /api/trade/all-trades` - trades history fetcher
 
 ## Trade Request Example
 
