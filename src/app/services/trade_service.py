@@ -1,5 +1,13 @@
 from app.core.config import Settings
-from app.schemas.trades import PlaceTradeRequest, PlaceTradeResponse
+from app.schemas.trades import (
+    CloseAllTradesResponse,
+    CloseBySymbolRequest,
+    CloseBySymbolResponse,
+    CloseByTicketRequest,
+    CloseByTicketResponse,
+    PlaceTradeRequest,
+    PlaceTradeResponse,
+)
 from app.services.ctrader import CTraderGateway
 
 
@@ -31,4 +39,51 @@ class TradeService:
             volume_lots=payload.volume_lots,
             volume_units=volume_units,
             execution=execution,
+        )
+
+    def close_all_trades(self) -> CloseAllTradesResponse:
+        closed_tickets, executions, skipped_tickets, not_found_tickets = self._gateway.close_positions(
+            self._settings.ctrader_account_id
+        )
+        return CloseAllTradesResponse(
+            account_id=self._settings.ctrader_account_id,
+            closed_tickets=closed_tickets,
+            executions=executions,
+            skipped_tickets=skipped_tickets,
+            not_found_tickets=not_found_tickets,
+        )
+
+    def close_trades_by_ticket(self, payload: CloseByTicketRequest) -> CloseByTicketResponse:
+        closed_tickets, executions, skipped_tickets, not_found_tickets = self._gateway.close_positions(
+            self._settings.ctrader_account_id,
+            tickets=payload.tickets,
+        )
+        return CloseByTicketResponse(
+            account_id=self._settings.ctrader_account_id,
+            requested_tickets=payload.tickets,
+            closed_tickets=closed_tickets,
+            executions=executions,
+            skipped_tickets=skipped_tickets,
+            not_found_tickets=not_found_tickets,
+        )
+
+    def close_trades_by_symbol(self, payload: CloseBySymbolRequest) -> CloseBySymbolResponse:
+        symbol_id, resolved_symbol_name = self._gateway.resolve_symbol_id(
+            self._settings.ctrader_account_id,
+            payload.symbol_name,
+        )
+        closed_tickets, executions, skipped_tickets = self._gateway.close_positions_by_symbol(
+            self._settings.ctrader_account_id,
+            symbol_id=symbol_id,
+            directions=[payload.direction],
+        )
+        return CloseBySymbolResponse(
+            account_id=self._settings.ctrader_account_id,
+            symbol_id=symbol_id,
+            symbol_name=resolved_symbol_name,
+            requested_direction=payload.direction,
+            closed_tickets=closed_tickets,
+            executions=executions,
+            skipped_tickets=skipped_tickets,
+            not_found_tickets=[],
         )

@@ -1,7 +1,10 @@
 from google.protobuf.json_format import MessageToDict
 
 from ctrader_open_api.messages.OpenApiMessages_pb2 import (
+    ProtoOAClosePositionReq,
     ProtoOAExecutionEvent,
+    ProtoOAReconcileReq,
+    ProtoOAReconcileRes,
     ProtoOANewOrderReq,
     ProtoOAOrderErrorEvent,
 )
@@ -41,4 +44,36 @@ class CTraderOrderClient:
         )
         if isinstance(response, ProtoOAOrderErrorEvent):
             raise CTraderApiError(response.errorCode, response.description or "Order rejected.")
+        return MessageToDict(response, preserving_proto_field_name=True)
+
+    def get_open_positions(self, account_id: int) -> list[dict]:
+        req = ProtoOAReconcileReq()
+        req.ctidTraderAccountId = account_id
+        response = self._transport.request(req, expected_types=(ProtoOAReconcileRes,))
+        return [
+            {
+                "position_id": position.positionId,
+                "volume": position.tradeData.volume,
+                "symbol_id": position.tradeData.symbolId,
+                "trade_side": position.tradeData.tradeSide,
+            }
+            for position in response.position
+        ]
+
+    def close_position(
+        self,
+        account_id: int,
+        position_id: int,
+        volume: int,
+    ) -> dict:
+        req = ProtoOAClosePositionReq()
+        req.ctidTraderAccountId = account_id
+        req.positionId = position_id
+        req.volume = volume
+        response = self._transport.request(
+            req,
+            expected_types=(ProtoOAExecutionEvent, ProtoOAOrderErrorEvent),
+        )
+        if isinstance(response, ProtoOAOrderErrorEvent):
+            raise CTraderApiError(response.errorCode, response.description or "Close position rejected.")
         return MessageToDict(response, preserving_proto_field_name=True)

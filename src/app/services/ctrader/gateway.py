@@ -8,6 +8,7 @@ from ctrader_open_api.messages.OpenApiMessages_pb2 import (
     ProtoOATraderReq,
     ProtoOATraderRes,
 )
+from ctrader_open_api.messages.OpenApiModelMessages_pb2 import ProtoOATradeSide
 
 from app.core.config import Settings
 from app.services.ctrader.history import CTraderHistoryClient
@@ -15,7 +16,7 @@ from app.services.ctrader.models import CTraderAccount, CTraderSymbol
 from app.services.ctrader.orders import CTraderOrderClient
 from app.services.ctrader.symbols import CTraderSymbolClient
 from app.services.ctrader.transport import CTraderTransport
-from app.services.exceptions import CTraderServiceError
+from app.services.exceptions import CTraderApiError, CTraderServiceError
 
 
 class CTraderGateway:
@@ -100,3 +101,83 @@ class CTraderGateway:
         max_rows: int = 5000,
     ) -> list[dict]:
         return self._history.get_deal_history(account_id, from_date, to_date, max_rows)
+
+    def close_positions(
+        self,
+        account_id: int,
+        tickets: list[int] | None = None,
+    ) -> tuple[list[int], list[dict], list[dict], list[int]]:
+        open_positions = self._orders.get_open_positions(account_id)
+        requested_tickets = set(tickets) if tickets is not None else None
+        selected_positions = (
+            [p for p in open_positions if p["position_id"] in requested_tickets]
+            if requested_tickets is not None
+            else open_positions
+        )
+        open_ticket_set = {position["position_id"] for position in open_positions}
+        not_found_tickets = (
+            sorted(ticket for ticket in requested_tickets if ticket not in open_ticket_set)
+            if requested_tickets is not None
+            else []
+        )
+
+        closed_tickets: list[int] = []
+        executions: list[dict] = []
+        skipped_tickets: list[dict] = []
+        for position in selected_positions:
+            position_id = position["position_id"]
+            volume = position["volume"]
+            try:
+                execution = self._orders.close_position(account_id, position_id, volume)
+                closed_tickets.append(position_id)
+                executions.append(execution)
+            except CTraderApiError as exc:
+                skipped_tickets.append(
+                    {
+                        "ticket": position_id,
+                        "code": exc.code,
+                        "description": exc.description,
+                    }
+                )
+
+        return closed_tickets, executions, skipped_tickets, not_found_tickets
+
+    def close_positions_by_symbol(
+        self,
+        account_id: int,
+        symbol_id: int,
+        directions: list[str],
+    ) -> tuple[list[int], list[dict], list[dict]]:
+        open_positions = self._orders.get_open_positions(account_id)
+        requested = {direction.upper() for direction in directions}
+        close_buy = "ALL" in requested or "LONG" in requested
+        close_sell = "ALL" in requested or "SHORT" in requested
+
+        selected_positions = []
+        for position in open_positions:
+            if position["symbol_id"] != symbol_id:
+                continue
+            is_buy = position["trade_side"] == ProtoOATradeSide.Value("BUY")
+            is_sell = position["trade_side"] == ProtoOATradeSide.Value("SELL")
+            if (is_buy and close_buy) or (is_sell and close_sell):
+                selected_positions.append(position)
+
+        closed_tickets: list[int] = []
+        executions: list[dict] = []
+        skipped_tickets: list[dict] = []
+        for position in selected_positions:
+            position_id = position["position_id"]
+            try:
+                execution = self._orders.close_position(account_id, position_id, position["volume"])
+                closed_tickets.append(position_id)
+                executions.append(execution)
+            except CTraderApiError as exc:
+                skipped_tickets.append(
+                    {
+                        "ticket": position_id,
+                        "code": exc.code,
+                        "description": exc.description,
+                    }
+                )
+
+        return closed_tickets, executions, skipped_tickets

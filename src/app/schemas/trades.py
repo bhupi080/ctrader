@@ -18,3 +18,40 @@ class PlaceTradeResponse(BaseModel):
     volume_lots: float
     volume_units: int
     execution: dict
+
+
+class CloseAllTradesResponse(BaseModel):
+    account_id: int
+    requested_tickets: list[int] | None = None
+    closed_tickets: list[int]
+    executions: list[dict]
+    skipped_tickets: list[dict] = Field(
+        default_factory=list,
+        description="Tickets skipped due to API/business errors (e.g. MARKET_CLOSED).",
+    )
+    not_found_tickets: list[int] = Field(
+        default_factory=list,
+        description="Requested tickets that were not found among currently open positions.",
+    )
+
+
+class CloseByTicketRequest(BaseModel):
+    tickets: list[int] = Field(..., min_length=1, description="Position IDs (ticket numbers) to close.")
+
+
+class CloseByTicketResponse(CloseAllTradesResponse):
+    pass
+
+
+class CloseBySymbolRequest(BaseModel):
+    symbol_name: str = Field(..., min_length=1, description="cTrader symbol name, e.g. BTCUSD.")
+    direction: Literal["LONG", "SHORT", "ALL"] = Field(
+        ...,
+        description="LONG: BUY positions only, SHORT: SELL only, ALL: both sides on this symbol.",
+    )
+
+
+class CloseBySymbolResponse(CloseAllTradesResponse):
+    symbol_name: str
+    symbol_id: int
+    requested_direction: Literal["LONG", "SHORT", "ALL"]

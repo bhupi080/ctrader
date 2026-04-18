@@ -1,9 +1,18 @@
 from datetime import date
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
 
 from app.api.dependencies import get_trade_history_service, get_trade_service
-from app.schemas.trades import PlaceTradeRequest, PlaceTradeResponse
+from app.schemas.trades import (
+    CloseAllTradesResponse,
+    CloseBySymbolRequest,
+    CloseBySymbolResponse,
+    CloseByTicketRequest,
+    CloseByTicketResponse,
+    PlaceTradeRequest,
+    PlaceTradeResponse,
+)
 from app.services.trade_history_service import TradeHistoryService
 from app.services.trade_service import TradeService
 
@@ -16,6 +25,39 @@ def place_trade(
     service: TradeService = Depends(get_trade_service),
 ) -> PlaceTradeResponse:
     return service.place_trade(payload)
+
+
+@router.post("/close-all", response_model=CloseAllTradesResponse)
+def close_all_trades(
+    service: TradeService = Depends(get_trade_service),
+) -> CloseAllTradesResponse:
+    return service.close_all_trades()
+
+
+@router.post("/close-by-ticket", response_model=CloseByTicketResponse)
+def close_trades_by_ticket(
+    payload: CloseByTicketRequest,
+    service: TradeService = Depends(get_trade_service),
+) -> CloseByTicketResponse:
+    return service.close_trades_by_ticket(payload)
+
+
+@router.post("/close-by-symbol", response_model=CloseBySymbolResponse)
+def close_trades_by_symbol(
+    symbol_name: str = Query(
+        ...,
+        min_length=1,
+        description="cTrader symbol name, e.g. BTCUSD.",
+    ),
+    direction: Literal["LONG", "SHORT", "ALL"] = Query(
+        ...,
+        description="LONG: BUY only, SHORT: SELL only, ALL: both sides for this symbol.",
+    ),
+    service: TradeService = Depends(get_trade_service),
+) -> CloseBySymbolResponse:
+    return service.close_trades_by_symbol(
+        CloseBySymbolRequest(symbol_name=symbol_name, direction=direction)
+    )
 
 
 @router.get("/all-trades", response_model=list[dict])
