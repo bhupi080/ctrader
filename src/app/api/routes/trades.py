@@ -13,7 +13,10 @@ from app.schemas.trades import (
     PlaceTradeRequest,
     PlaceTradeResponse,
     RemoveAllTakeProfitResponse,
+    RemoveAllStopLossResponse,
     SetTakeProfitRequest,
+    SetStopLossRequest,
+    StopLossResponse,
     TakeProfitResponse,
 )
 from app.services.trade_history_service import TradeHistoryService
@@ -101,3 +104,26 @@ def remove_all_take_profit(
     service: TradeService = Depends(get_trade_service),
 ) -> RemoveAllTakeProfitResponse:
     return service.remove_all_take_profit()
+
+
+@router.post("/set-stop-loss", response_model=StopLossResponse)
+def set_stop_loss(
+    payload: SetStopLossRequest,
+    service: TradeService = Depends(get_trade_service),
+) -> StopLossResponse:
+    return service.set_stop_loss(payload)
+
+
+@router.post("/remove-stop-loss", response_model=StopLossResponse)
+def remove_stop_loss(
+    ticket: int = Query(..., gt=0, description="Position ID (ticket number)."),
+    service: TradeService = Depends(get_trade_service),
+) -> StopLossResponse:
+    return service.remove_stop_loss(ticket)
+
+
+@router.post("/remove-all-stop-loss", response_model=RemoveAllStopLossResponse)
+def remove_all_stop_loss(
+    service: TradeService = Depends(get_trade_service),
+) -> RemoveAllStopLossResponse:
+    return service.remove_all_stop_loss()

@@ -14,6 +14,8 @@ from ctrader_open_api.messages.OpenApiModelMessages_pb2 import ProtoOAOrderType,
 from app.services.ctrader.transport import CTraderTransport
 from app.services.exceptions import CTraderApiError
 
+_UNSET = object()
+
 
 class CTraderOrderClient:
     def __init__(self, transport: CTraderTransport) -> None:
@@ -57,6 +59,10 @@ class CTraderOrderClient:
                 "volume": position.tradeData.volume,
                 "symbol_id": position.tradeData.symbolId,
                 "trade_side": position.tradeData.tradeSide,
+                "has_stop_loss": self._has_field(position, "stopLoss"),
+                "has_take_profit": self._has_field(position, "takeProfit"),
+                "stop_loss": position.stopLoss if self._has_field(position, "stopLoss") else None,
+                "take_profit": position.takeProfit if self._has_field(position, "takeProfit") else None,
             }
             for position in response.position
         ]
@@ -85,15 +91,42 @@ class CTraderOrderClient:
         position_id: int,
         take_profit: float | None,
     ) -> dict:
+        if take_profit is None:
+            return self.amend_position_sltp(account_id, position_id)
+        return self.amend_position_sltp(account_id, position_id, take_profit=take_profit)
+
+    def amend_position_stop_loss(
+        self,
+        account_id: int,
+        position_id: int,
+        stop_loss: float | None,
+    ) -> dict:
+        if stop_loss is None:
+            return self.amend_position_sltp(account_id, position_id)
+        return self.amend_position_sltp(account_id, position_id, stop_loss=stop_loss)
+
+    def amend_position_sltp(
+        self,
+        account_id: int,
+        position_id: int,
+        stop_loss: float | object = _UNSET,
+        take_profit: float | object = _UNSET,
+    ) -> dict:
         req = ProtoOAAmendPositionSLTPReq()
         req.ctidTraderAccountId = account_id
         req.positionId = position_id
-        if take_profit is not None:
+        if stop_loss is not _UNSET:
+            req.stopLoss = stop_loss
+        if take_profit is not _UNSET:
             req.takeProfit = take_profit
-        response = self._transport.request(
-            req,
-            expected_types=(ProtoOAExecutionEvent, ProtoOAOrderErrorEvent),
-        )
+        response = self._transport.request(req, expected_types=(ProtoOAExecutionEvent, ProtoOAOrderErrorEvent))
         if isinstance(response, ProtoOAOrderErrorEvent):
-            raise CTraderApiError(response.errorCode, response.description or "Amend take profit rejected.")
+            raise CTraderApiError(response.errorCode, response.description or "Amend position SL/TP rejected.")
         return MessageToDict(response, preserving_proto_field_name=True)
+
+    @staticmethod
+    def _has_field(message, field_name: str) -> bool:
+        try:
+            return message.HasField(field_name)
+        except ValueError:
+            return False

@@ -8,7 +8,10 @@ from app.schemas.trades import (
     PlaceTradeRequest,
     PlaceTradeResponse,
     RemoveAllTakeProfitResponse,
+    RemoveAllStopLossResponse,
     SetTakeProfitRequest,
+    SetStopLossRequest,
+    StopLossResponse,
     TakeProfitResponse,
 )
 from app.services.ctrader import CTraderGateway
@@ -120,6 +123,41 @@ class TradeService:
             self._settings.ctrader_account_id
         )
         return RemoveAllTakeProfitResponse(
+            account_id=self._settings.ctrader_account_id,
+            updated_tickets=updated_tickets,
+            executions=executions,
+            skipped_tickets=skipped_tickets,
+        )
+
+    def set_stop_loss(self, payload: SetStopLossRequest) -> StopLossResponse:
+        execution = self._gateway.amend_position_stop_loss(
+            account_id=self._settings.ctrader_account_id,
+            position_id=payload.ticket,
+            stop_loss=payload.stop_loss,
+        )
+        return StopLossResponse(
+            account_id=self._settings.ctrader_account_id,
+            ticket=payload.ticket,
+            execution=execution,
+        )
+
+    def remove_stop_loss(self, ticket: int) -> StopLossResponse:
+        execution = self._gateway.amend_position_stop_loss(
+            account_id=self._settings.ctrader_account_id,
+            position_id=ticket,
+            stop_loss=None,
+        )
+        return StopLossResponse(
+            account_id=self._settings.ctrader_account_id,
+            ticket=ticket,
+            execution=execution,
+        )
+
+    def remove_all_stop_loss(self) -> RemoveAllStopLossResponse:
+        updated_tickets, executions, skipped_tickets = self._gateway.remove_stop_loss_all_positions(
+            self._settings.ctrader_account_id
+        )
+        return RemoveAllStopLossResponse(
             account_id=self._settings.ctrader_account_id,
             updated_tickets=updated_tickets,
             executions=executions,

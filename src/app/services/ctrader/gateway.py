@@ -188,7 +188,26 @@ class CTraderGateway:
         position_id: int,
         take_profit: float | None,
     ) -> dict:
-        return self._orders.amend_position_take_profit(account_id, position_id, take_profit)
+        position = self._find_open_position(account_id, position_id)
+        if position is None:
+            raise CTraderServiceError(f"Position {position_id} is not currently open.")
+        if take_profit is None:
+            # Omit takeProfit to clear it while preserving existing stopLoss.
+            if position["has_stop_loss"]:
+                return self._orders.amend_position_sltp(
+                    account_id,
+                    position_id,
+                    stop_loss=position["stop_loss"],
+                )
+            return {"status": "no_change", "reason": "take_profit_already_unset"}
+        if position["has_stop_loss"]:
+            return self._orders.amend_position_sltp(
+                account_id,
+                position_id,
+                stop_loss=position["stop_loss"],
+                take_profit=take_profit,
+            )
+        return self._orders.amend_position_sltp(account_id, position_id, take_profit=take_profit)
 
     def remove_take_profit_all_positions(
         self,
@@ -202,7 +221,16 @@ class CTraderGateway:
         for position in open_positions:
             position_id = position["position_id"]
             try:
-                execution = self._orders.amend_position_take_profit(account_id, position_id, None)
+                if not position["has_take_profit"]:
+                    continue
+                if position["has_stop_loss"]:
+                    execution = self._orders.amend_position_sltp(
+                        account_id,
+                        position_id,
+                        stop_loss=position["stop_loss"],
+                    )
+                else:
+                    execution = self._orders.amend_position_sltp(account_id, position_id)
                 updated_tickets.append(position_id)
                 executions.append(execution)
             except CTraderApiError as exc:
@@ -215,3 +243,71 @@ class CTraderGateway:
                 )
 
         return updated_tickets, executions, skipped_tickets
+
+    def amend_position_stop_loss(
+        self,
+        account_id: int,
+        position_id: int,
+        stop_loss: float | None,
+    ) -> dict:
+        position = self._find_open_position(account_id, position_id)
+        if position is None:
+            raise CTraderServiceError(f"Position {position_id} is not currently open.")
+        if stop_loss is None:
+            # Omit stopLoss to clear it while preserving existing takeProfit.
+            if position["has_take_profit"]:
+                return self._orders.amend_position_sltp(
+                    account_id,
+                    position_id,
+                    take_profit=position["take_profit"],
+                )
+            return {"status": "no_change", "reason": "stop_loss_already_unset"}
+        if position["has_take_profit"]:
+            return self._orders.amend_position_sltp(
+                account_id,
+                position_id,
+                stop_loss=stop_loss,
+                take_profit=position["take_profit"],
+            )
+        return self._orders.amend_position_sltp(account_id, position_id, stop_loss=stop_loss)
+
+    def remove_stop_loss_all_positions(
+        self,
+        account_id: int,
+    ) -> tuple[list[int], list[dict], list[dict]]:
+        open_positions = self._orders.get_open_positions(account_id)
+
+        updated_tickets: list[int] = []
+        executions: list[dict] = []
+        skipped_tickets: list[dict] = []
+        for position in open_positions:
+            position_id = position["position_id"]
+            try:
+                if not position["has_stop_loss"]:
+                    continue
+                if position["has_take_profit"]:
+                    execution = self._orders.amend_position_sltp(
+                        account_id,
+                        position_id,
+                        take_profit=position["take_profit"],
+                    )
+                else:
+                    execution = self._orders.amend_position_sltp(account_id, position_id)
+                updated_tickets.append(position_id)
+                executions.append(execution)
+            except CTraderApiError as exc:
+                skipped_tickets.append(
+                    {
+                        "ticket": position_id,
+                        "code": exc.code,
+                        "description": exc.description,
+                    }
+                )
+
+        return updated_tickets, executions, skipped_tickets
+
+    def _find_open_position(self, account_id: int, position_id: int) -> dict | None:
+        for position in self._orders.get_open_positions(account_id):
+            if position["position_id"] == position_id:
+                return position
+        return None

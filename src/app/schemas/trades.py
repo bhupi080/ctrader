@@ -76,3 +76,24 @@ class RemoveAllTakeProfitResponse(BaseModel):
         default_factory=list,
         description="Tickets skipped due to API/business errors.",
     )
+
+
+class SetStopLossRequest(BaseModel):
+    ticket: int = Field(..., gt=0, description="Position ID (ticket number).")
+    stop_loss: float = Field(..., gt=0, description="Stop-loss target price.")
+
+
+class StopLossResponse(BaseModel):
+    account_id: int
+    ticket: int
+    execution: dict
+
+
+class RemoveAllStopLossResponse(BaseModel):
+    account_id: int
+    updated_tickets: list[int]
+    executions: list[dict]
+    skipped_tickets: list[dict] = Field(
+        default_factory=list,
+        description="Tickets skipped due to API/business errors.",
+    )
