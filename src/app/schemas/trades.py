@@ -55,3 +55,24 @@ class CloseBySymbolResponse(CloseAllTradesResponse):
     symbol_name: str
     symbol_id: int
     requested_direction: Literal["LONG", "SHORT", "ALL"]
+
+
+class SetTakeProfitRequest(BaseModel):
+    ticket: int = Field(..., gt=0, description="Position ID (ticket number).")
+    take_profit: float = Field(..., gt=0, description="Take-profit target price.")
+
+
+class TakeProfitResponse(BaseModel):
+    account_id: int
+    ticket: int
+    execution: dict
+
+
+class RemoveAllTakeProfitResponse(BaseModel):
+    account_id: int
+    updated_tickets: list[int]
+    executions: list[dict]
+    skipped_tickets: list[dict] = Field(
+        default_factory=list,
+        description="Tickets skipped due to API/business errors.",
+    )

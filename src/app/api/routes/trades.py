@@ -12,6 +12,9 @@ from app.schemas.trades import (
     CloseByTicketResponse,
     PlaceTradeRequest,
     PlaceTradeResponse,
+    RemoveAllTakeProfitResponse,
+    SetTakeProfitRequest,
+    TakeProfitResponse,
 )
 from app.services.trade_history_service import TradeHistoryService
 from app.services.trade_service import TradeService
@@ -75,3 +78,26 @@ def get_all_trades(
     service: TradeHistoryService = Depends(get_trade_history_service),
 ) -> list[dict]:
     return service.get_all_trades(from_date, to_date)
+
+
+@router.post("/set-take-profit", response_model=TakeProfitResponse)
+def set_take_profit(
+    payload: SetTakeProfitRequest,
+    service: TradeService = Depends(get_trade_service),
+) -> TakeProfitResponse:
+    return service.set_take_profit(payload)
+
+
+@router.post("/remove-take-profit", response_model=TakeProfitResponse)
+def remove_take_profit(
+    ticket: int = Query(..., gt=0, description="Position ID (ticket number)."),
+    service: TradeService = Depends(get_trade_service),
+) -> TakeProfitResponse:
+    return service.remove_take_profit(ticket)
+
+
+@router.post("/remove-all-take-profit", response_model=RemoveAllTakeProfitResponse)
+def remove_all_take_profit(
+    service: TradeService = Depends(get_trade_service),
+) -> RemoveAllTakeProfitResponse:
+    return service.remove_all_take_profit()

@@ -1,6 +1,7 @@
 from google.protobuf.json_format import MessageToDict
 
 from ctrader_open_api.messages.OpenApiMessages_pb2 import (
+    ProtoOAAmendPositionSLTPReq,
     ProtoOAClosePositionReq,
     ProtoOAExecutionEvent,
     ProtoOAReconcileReq,
@@ -76,4 +77,23 @@ class CTraderOrderClient:
         )
         if isinstance(response, ProtoOAOrderErrorEvent):
             raise CTraderApiError(response.errorCode, response.description or "Close position rejected.")
+        return MessageToDict(response, preserving_proto_field_name=True)
+
+    def amend_position_take_profit(
+        self,
+        account_id: int,
+        position_id: int,
+        take_profit: float | None,
+    ) -> dict:
+        req = ProtoOAAmendPositionSLTPReq()
+        req.ctidTraderAccountId = account_id
+        req.positionId = position_id
+        if take_profit is not None:
+            req.takeProfit = take_profit
+        response = self._transport.request(
+            req,
+            expected_types=(ProtoOAExecutionEvent, ProtoOAOrderErrorEvent),
+        )
+        if isinstance(response, ProtoOAOrderErrorEvent):
+            raise CTraderApiError(response.errorCode, response.description or "Amend take profit rejected.")
         return MessageToDict(response, preserving_proto_field_name=True)

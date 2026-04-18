@@ -181,3 +181,37 @@ class CTraderGateway:
                 )
 
         return closed_tickets, executions, skipped_tickets
+
+    def amend_position_take_profit(
+        self,
+        account_id: int,
+        position_id: int,
+        take_profit: float | None,
+    ) -> dict:
+        return self._orders.amend_position_take_profit(account_id, position_id, take_profit)
+
+    def remove_take_profit_all_positions(
+        self,
+        account_id: int,
+    ) -> tuple[list[int], list[dict], list[dict]]:
+        open_positions = self._orders.get_open_positions(account_id)
+
+        updated_tickets: list[int] = []
+        executions: list[dict] = []
+        skipped_tickets: list[dict] = []
+        for position in open_positions:
+            position_id = position["position_id"]
+            try:
+                execution = self._orders.amend_position_take_profit(account_id, position_id, None)
+                updated_tickets.append(position_id)
+                executions.append(execution)
+            except CTraderApiError as exc:
+                skipped_tickets.append(
+                    {
+                        "ticket": position_id,
+                        "code": exc.code,
+                        "description": exc.description,
+                    }
+                )
+
+        return updated_tickets, executions, skipped_tickets

@@ -7,6 +7,9 @@ from app.schemas.trades import (
     CloseByTicketResponse,
     PlaceTradeRequest,
     PlaceTradeResponse,
+    RemoveAllTakeProfitResponse,
+    SetTakeProfitRequest,
+    TakeProfitResponse,
 )
 from app.services.ctrader import CTraderGateway
 
@@ -86,4 +89,39 @@ class TradeService:
             executions=executions,
             skipped_tickets=skipped_tickets,
             not_found_tickets=[],
+        )
+
+    def set_take_profit(self, payload: SetTakeProfitRequest) -> TakeProfitResponse:
+        execution = self._gateway.amend_position_take_profit(
+            account_id=self._settings.ctrader_account_id,
+            position_id=payload.ticket,
+            take_profit=payload.take_profit,
+        )
+        return TakeProfitResponse(
+            account_id=self._settings.ctrader_account_id,
+            ticket=payload.ticket,
+            execution=execution,
+        )
+
+    def remove_take_profit(self, ticket: int) -> TakeProfitResponse:
+        execution = self._gateway.amend_position_take_profit(
+            account_id=self._settings.ctrader_account_id,
+            position_id=ticket,
+            take_profit=None,
+        )
+        return TakeProfitResponse(
+            account_id=self._settings.ctrader_account_id,
+            ticket=ticket,
+            execution=execution,
+        )
+
+    def remove_all_take_profit(self) -> RemoveAllTakeProfitResponse:
+        updated_tickets, executions, skipped_tickets = self._gateway.remove_take_profit_all_positions(
+            self._settings.ctrader_account_id
+        )
+        return RemoveAllTakeProfitResponse(
+            account_id=self._settings.ctrader_account_id,
+            updated_tickets=updated_tickets,
+            executions=executions,
+            skipped_tickets=skipped_tickets,
         )
