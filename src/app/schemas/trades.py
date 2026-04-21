@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class PlaceTradeRequest(BaseModel):
+    account_id: int = Field(..., gt=0, description="cTrader account ID (ctidTraderAccountId).")
     symbol_name: str = Field(..., min_length=1, description="cTrader symbol name, e.g. EURUSD.")
     side: Literal["BUY", "SELL"] = Field(..., description="Trade side.")
     volume_lots: float = Field(..., gt=0, description="Trade volume in lots, e.g. 1 or 0.1.")

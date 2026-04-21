@@ -27,6 +27,8 @@ class CTraderTransport:
         self._connected = threading.Event()
         self._started = threading.Event()
         self._connection_error: Exception | None = None
+        self._authorized_account_ids: set[int] = set()
+        self._auth_lock = threading.Lock()
 
         self.client.setConnectedCallback(self._on_connected)
         self.client.setDisconnectedCallback(self._on_disconnected)
@@ -63,11 +65,17 @@ class CTraderTransport:
         app_req.clientId = self.settings.ctrader_client_id
         app_req.clientSecret = self.settings.ctrader_client_secret
         self.request(app_req, expected_types=(ProtoOAApplicationAuthRes,))
+        self.ensure_account_authorized(self.settings.ctrader_account_id)
 
-        account_req = ProtoOAAccountAuthReq()
-        account_req.ctidTraderAccountId = self.settings.ctrader_account_id
-        account_req.accessToken = self.settings.ctrader_access_token
-        self.request(account_req, expected_types=(ProtoOAAccountAuthRes,))
+    def ensure_account_authorized(self, account_id: int) -> None:
+        with self._auth_lock:
+            if account_id in self._authorized_account_ids:
+                return
+            account_req = ProtoOAAccountAuthReq()
+            account_req.ctidTraderAccountId = account_id
+            account_req.accessToken = self.settings.ctrader_access_token
+            self.request(account_req, expected_types=(ProtoOAAccountAuthRes,))
+            self._authorized_account_ids.add(account_id)
 
     def request(self, request: Message, expected_types: Sequence[Type[Message]]) -> Message:
         if not self._started.is_set():

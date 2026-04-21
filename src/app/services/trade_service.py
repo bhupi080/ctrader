@@ -23,15 +23,16 @@ class TradeService:
         self._settings = settings
 
     def place_trade(self, payload: PlaceTradeRequest) -> PlaceTradeResponse:
+        self._gateway.ensure_account_authorized(payload.account_id)
         symbol_id, resolved_symbol_name = self._gateway.resolve_symbol_id(
-            self._settings.ctrader_account_id,
+            payload.account_id,
             payload.symbol_name,
         )
-        symbol = self._gateway.get_symbol_details(self._settings.ctrader_account_id, symbol_id)
+        symbol = self._gateway.get_symbol_details(payload.account_id, symbol_id)
         volume_units = self._gateway.lots_to_volume_units(symbol, payload.volume_lots)
 
         execution = self._gateway.place_market_order(
-            account_id=self._settings.ctrader_account_id,
+            account_id=payload.account_id,
             symbol_id=symbol_id,
             side=payload.side,
             volume=volume_units,
@@ -39,7 +40,7 @@ class TradeService:
             comment=payload.comment,
         )
         return PlaceTradeResponse(
-            account_id=self._settings.ctrader_account_id,
+            account_id=payload.account_id,
             symbol_id=symbol_id,
             symbol_name=resolved_symbol_name,
             volume_lots=payload.volume_lots,

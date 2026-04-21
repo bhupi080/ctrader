@@ -36,6 +36,9 @@ class CTraderGateway:
     def stop(self) -> None:
         self._transport.stop()
 
+    def ensure_account_authorized(self, account_id: int) -> None:
+        self._transport.ensure_account_authorized(account_id)
+
     def get_accounts(self) -> list[CTraderAccount]:
         req = ProtoOAGetAccountListByAccessTokenReq()
         req.accessToken = self._settings.ctrader_access_token
