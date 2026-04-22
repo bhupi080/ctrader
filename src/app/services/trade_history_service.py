@@ -2,16 +2,16 @@ from datetime import UTC, date, datetime, timedelta
 
 from fastapi import HTTPException
 
-from app.core.config import Settings
 from app.services.ctrader import CTraderGateway
+from app.services.signal_account_map import SignalAccountMap, SignalAccountMapError
 
 
 class TradeHistoryService:
-    def __init__(self, gateway: CTraderGateway, settings: Settings) -> None:
+    def __init__(self, gateway: CTraderGateway, signal_account_map: SignalAccountMap) -> None:
         self._gateway = gateway
-        self._settings = settings
+        self._signal_account_map = signal_account_map
 
-    def get_all_trades(self, from_date: date | None, to_date: date | None) -> list[dict]:
+    def get_all_trades(self, signal_type: str, from_date: date | None, to_date: date | None) -> list[dict]:
         if (from_date is None) != (to_date is None):
             raise HTTPException(
                 status_code=400,
@@ -25,4 +25,9 @@ class TradeHistoryService:
         if from_date > to_date:
             raise HTTPException(status_code=400, detail="'from' date cannot be after 'to' date.")
 
-        return self._gateway.get_deal_history(self._settings.ctrader_account_id, from_date, to_date)
+        try:
+            account_id = self._signal_account_map.resolve_account_id(signal_type)
+        except SignalAccountMapError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        self._gateway.ensure_account_authorized(account_id)
+        return self._gateway.get_deal_history(account_id, from_date, to_date)

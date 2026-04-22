@@ -1,19 +1,22 @@
 from datetime import date
-from typing import Literal
-
 from fastapi import APIRouter, Depends, Query
 
 from app.api.dependencies import get_trade_history_service, get_trade_service
 from app.schemas.trades import (
     CloseAllTradesResponse,
+    CloseAllTradesRequest,
     CloseBySymbolRequest,
     CloseBySymbolResponse,
     CloseByTicketRequest,
     CloseByTicketResponse,
     PlaceTradeRequest,
     PlaceTradeResponse,
+    RemoveAllTakeProfitRequest,
     RemoveAllTakeProfitResponse,
+    RemoveAllStopLossRequest,
     RemoveAllStopLossResponse,
+    RemoveTakeProfitRequest,
+    RemoveStopLossRequest,
     SetTakeProfitRequest,
     SetStopLossRequest,
     StopLossResponse,
@@ -35,9 +38,10 @@ def place_trade(
 
 @router.post("/close-all", response_model=CloseAllTradesResponse)
 def close_all_trades(
+    payload: CloseAllTradesRequest,
     service: TradeService = Depends(get_trade_service),
 ) -> CloseAllTradesResponse:
-    return service.close_all_trades()
+    return service.close_all_trades(payload)
 
 
 @router.post("/close-by-ticket", response_model=CloseByTicketResponse)
@@ -50,24 +54,15 @@ def close_trades_by_ticket(
 
 @router.post("/close-by-symbol", response_model=CloseBySymbolResponse)
 def close_trades_by_symbol(
-    symbol_name: str = Query(
-        ...,
-        min_length=1,
-        description="cTrader symbol name, e.g. BTCUSD.",
-    ),
-    direction: Literal["LONG", "SHORT", "ALL"] = Query(
-        ...,
-        description="LONG: BUY only, SHORT: SELL only, ALL: both sides for this symbol.",
-    ),
+    payload: CloseBySymbolRequest,
     service: TradeService = Depends(get_trade_service),
 ) -> CloseBySymbolResponse:
-    return service.close_trades_by_symbol(
-        CloseBySymbolRequest(symbol_name=symbol_name, direction=direction)
-    )
+    return service.close_trades_by_symbol(payload)
 
 
 @router.get("/all-trades", response_model=list[dict])
 def get_all_trades(
+    signal_type: str = Query(..., min_length=1, description="Signal type mapped to cTrader account ID."),
     from_date: date | None = Query(
         None,
         alias="from",
@@ -80,7 +75,7 @@ def get_all_trades(
     ),
     service: TradeHistoryService = Depends(get_trade_history_service),
 ) -> list[dict]:
-    return service.get_all_trades(from_date, to_date)
+    return service.get_all_trades(signal_type, from_date, to_date)
 
 
 @router.post("/set-take-profit", response_model=TakeProfitResponse)
@@ -93,17 +88,18 @@ def set_take_profit(
 
 @router.post("/remove-take-profit", response_model=TakeProfitResponse)
 def remove_take_profit(
-    ticket: int = Query(..., gt=0, description="Position ID (ticket number)."),
+    payload: RemoveTakeProfitRequest,
     service: TradeService = Depends(get_trade_service),
 ) -> TakeProfitResponse:
-    return service.remove_take_profit(ticket)
+    return service.remove_take_profit(payload)
 
 
 @router.post("/remove-all-take-profit", response_model=RemoveAllTakeProfitResponse)
 def remove_all_take_profit(
+    payload: RemoveAllTakeProfitRequest,
     service: TradeService = Depends(get_trade_service),
 ) -> RemoveAllTakeProfitResponse:
-    return service.remove_all_take_profit()
+    return service.remove_all_take_profit(payload)
 
 
 @router.post("/set-stop-loss", response_model=StopLossResponse)
@@ -116,14 +112,15 @@ def set_stop_loss(
 
 @router.post("/remove-stop-loss", response_model=StopLossResponse)
 def remove_stop_loss(
-    ticket: int = Query(..., gt=0, description="Position ID (ticket number)."),
+    payload: RemoveStopLossRequest,
     service: TradeService = Depends(get_trade_service),
 ) -> StopLossResponse:
-    return service.remove_stop_loss(ticket)
+    return service.remove_stop_loss(payload)
 
 
 @router.post("/remove-all-stop-loss", response_model=RemoveAllStopLossResponse)
 def remove_all_stop_loss(
+    payload: RemoveAllStopLossRequest,
     service: TradeService = Depends(get_trade_service),
 ) -> RemoveAllStopLossResponse:
-    return service.remove_all_stop_loss()
+    return service.remove_all_stop_loss(payload)

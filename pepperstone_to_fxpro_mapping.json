@@ -1,0 +1,12 @@
+{
+    "BTCUSD": "BITCOIN",
+    "SOLUSD": "SOLANA",
+    "XAUUSD": "GOLD",
+    "XAGUSD": "SILVER",
+    "SPOTBRENT": "BRENT",
+    "ETHUSD": "ETHEREUM",
+    "JPN225": "#Japan225",
+    "US30": "#US30",
+    "NAS100": "#USNDAQ100",
+    "US500": "#USSPX500"
+}

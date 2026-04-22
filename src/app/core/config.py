@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     ctrader_access_token: str = Field(alias="CTRADER_ACCESS_TOKEN")
     ctrader_account_id: int = Field(alias="CTRADER_ACCOUNT_ID")
     ctrader_request_timeout_seconds: float = Field(default=15.0, alias="CTRADER_REQUEST_TIMEOUT_SECONDS")
+    signal_account_map_path: str = Field(default="signal_account_map.yml", alias="SIGNAL_ACCOUNT_MAP_PATH")
 
 
 @lru_cache
