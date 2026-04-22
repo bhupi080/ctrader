@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     ctrader_account_id: int = Field(alias="CTRADER_ACCOUNT_ID")
     ctrader_request_timeout_seconds: float = Field(default=15.0, alias="CTRADER_REQUEST_TIMEOUT_SECONDS")
     signal_account_map_path: str = Field(default="signal_account_map.yml", alias="SIGNAL_ACCOUNT_MAP_PATH")
+    fxpro_symbol_mapping_enabled: bool = Field(default=False, alias="FXPRO_SYMBOL_MAPPING_ENABLED")
+    symbol_mapping_path: str = Field(
+        default="pepperstone_to_fxpro_mapping.json",
+        alias="SYMBOL_MAPPING_PATH",
+    )
 
 
 @lru_cache

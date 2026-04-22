@@ -29,6 +29,8 @@ uv sync
 - `CTRADER_ACCESS_TOKEN`
 - `CTRADER_REQUEST_TIMEOUT_SECONDS` (optional)
 - `SIGNAL_ACCOUNT_MAP_PATH` (optional; defaults to `signal_account_map.yml`)
+- `FXPRO_SYMBOL_MAPPING_ENABLED` (optional; defaults to `false`)
+- `SYMBOL_MAPPING_PATH` (optional; defaults to `pepperstone_to_fxpro_mapping.json`)
 
 3. Configure `signal_type -> account_id` map (root file `signal_account_map.yml`):
 
@@ -75,6 +77,10 @@ Server runs at `http://localhost:80` by default.
 }
 ```
 
+When `FXPRO_SYMBOL_MAPPING_ENABLED=true`, symbol-based endpoints map source symbols
+using `SYMBOL_MAPPING_PATH` before resolution (e.g. `BTCUSD -> BITCOIN`).
+If a symbol is not found in the mapping file, the original symbol is used.
+
 ## Additional Request Examples
 
 Close all for one mapped signal:
@@ -105,3 +111,4 @@ Get history:
 - Open API limits still apply (50 req/s non-historical, 5 req/s historical per connection).
 - Use OAuth access token flow as documented by cTrader.
 - Unknown `signal_type` returns HTTP 400.
+- Symbol mapping is applied only to symbol-based actions (`/trade` and `/trade/close-by-symbol`) when enabled.

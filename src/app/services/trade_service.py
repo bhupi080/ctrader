@@ -22,18 +22,28 @@ from app.schemas.trades import (
 )
 from app.services.ctrader import CTraderGateway
 from app.services.signal_account_map import SignalAccountMap, SignalAccountMapError
+from app.services.symbol_mapping import SymbolMapping
 
 
 class TradeService:
-    def __init__(self, gateway: CTraderGateway, signal_account_map: SignalAccountMap) -> None:
+    def __init__(
+        self,
+        gateway: CTraderGateway,
+        signal_account_map: SignalAccountMap,
+        symbol_mapping: SymbolMapping,
+        fxpro_symbol_mapping_enabled: bool,
+    ) -> None:
         self._gateway = gateway
         self._signal_account_map = signal_account_map
+        self._symbol_mapping = symbol_mapping
+        self._fxpro_symbol_mapping_enabled = fxpro_symbol_mapping_enabled
 
     def place_trade(self, payload: PlaceTradeRequest) -> PlaceTradeResponse:
         account_id = self._resolve_account_id(payload.signal_type)
+        symbol_name = self._map_symbol_if_enabled(payload.symbol_name)
         symbol_id, resolved_symbol_name = self._gateway.resolve_symbol_id(
             account_id,
-            payload.symbol_name,
+            symbol_name,
         )
         symbol = self._gateway.get_symbol_details(account_id, symbol_id)
         volume_units = self._gateway.lots_to_volume_units(symbol, payload.volume_lots)
@@ -85,9 +95,10 @@ class TradeService:
 
     def close_trades_by_symbol(self, payload: CloseBySymbolRequest) -> CloseBySymbolResponse:
         account_id = self._resolve_account_id(payload.signal_type)
+        symbol_name = self._map_symbol_if_enabled(payload.symbol_name)
         symbol_id, resolved_symbol_name = self._gateway.resolve_symbol_id(
             account_id,
-            payload.symbol_name,
+            symbol_name,
         )
         closed_tickets, executions, skipped_tickets = self._gateway.close_positions_by_symbol(
             account_id,
@@ -188,3 +199,8 @@ class TradeService:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         self._gateway.ensure_account_authorized(account_id)
         return account_id
+
+    def _map_symbol_if_enabled(self, symbol_name: str) -> str:
+        if not self._fxpro_symbol_mapping_enabled:
+            return symbol_name
+        return self._symbol_mapping.map_symbol(symbol_name)
