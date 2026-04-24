@@ -145,6 +145,52 @@ class CTraderGateway:
 
         return closed_tickets, executions, skipped_tickets, not_found_tickets
 
+    def close_position_by_comment_id(self, account_id: int, signal_id: str) -> tuple[list[int], list[dict]]:
+        open_positions = self._orders.get_open_positions(account_id)
+        normalized_signal_id = signal_id.strip().lower()
+        matching_positions = []
+        discovered_ids: set[str] = set()
+        for position in open_positions:
+            candidate_texts = [
+                position.get("comment", ""),
+                position.get("trade_comment", ""),
+                position.get("label", ""),
+                position.get("trade_label", ""),
+            ]
+            extracted_ids = {
+                extracted_id
+                for extracted_id in (
+                    self._extract_signal_id(candidate) for candidate in candidate_texts
+                )
+                if extracted_id
+            }
+            for extracted_id in extracted_ids:
+                discovered_ids.add(extracted_id)
+            if any(extracted_id.lower() == normalized_signal_id for extracted_id in extracted_ids):
+                matching_positions.append(position)
+
+        if not matching_positions:
+            known_ids = sorted(discovered_ids)
+            if known_ids:
+                raise CTraderServiceError(
+                    f"No open position found with id '{signal_id}' in comment. Known open ids: {known_ids}."
+                )
+            raise CTraderServiceError(
+                f"No open position found with id '{signal_id}' in comment. "
+                "No id=... markers were found on open positions."
+            )
+        closed_tickets: list[int] = []
+        executions: list[dict] = []
+        for position in matching_positions:
+            execution = self._orders.close_position(
+                account_id,
+                position["position_id"],
+                position["volume"],
+            )
+            closed_tickets.append(position["position_id"])
+            executions.append(execution)
+        return closed_tickets, executions
+
     def close_positions_by_symbol(
         self,
         account_id: int,
@@ -314,3 +360,15 @@ class CTraderGateway:
             if position["position_id"] == position_id:
                 return position
         return None
+
+    @staticmethod
+    def _extract_signal_id(comment: str) -> str | None:
+        marker = "id="
+        lowered = comment.lower()
+        idx = lowered.find(marker)
+        if idx < 0:
+            return None
+        id_part = comment[idx + len(marker) :].strip()
+        if "|" in id_part:
+            id_part = id_part.split("|", 1)[0].strip()
+        return id_part or None

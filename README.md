@@ -70,10 +70,21 @@ Server runs at `http://localhost:80` by default.
 {
   "signal_type": "K",
   "symbol_name": "EURUSD",
-  "side": "BUY",
+  "signal": "open long | id=L_1762270200000_478",
   "volume_lots": 0.1,
   "label": "test-order",
-  "comment": "api test"
+  "comment": "strategy-a"
+}
+```
+
+Close the same trade by id:
+
+```json
+{
+  "signal_type": "K",
+  "symbol_name": "EURUSD",
+  "signal": "close long | id=L_1762270200000_478",
+  "volume_lots": 0.1
 }
 ```
 

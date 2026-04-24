@@ -59,6 +59,10 @@ class CTraderOrderClient:
                 "volume": position.tradeData.volume,
                 "symbol_id": position.tradeData.symbolId,
                 "trade_side": position.tradeData.tradeSide,
+                "comment": self._read_text_field(position, position.tradeData, field_name="comment"),
+                "trade_comment": self._read_text_field(position.tradeData, position, field_name="comment"),
+                "label": self._read_text_field(position, position.tradeData, field_name="label"),
+                "trade_label": self._read_text_field(position.tradeData, position, field_name="label"),
                 "has_stop_loss": self._has_field(position, "stopLoss"),
                 "has_take_profit": self._has_field(position, "takeProfit"),
                 "stop_loss": position.stopLoss if self._has_field(position, "stopLoss") else None,
@@ -130,3 +134,13 @@ class CTraderOrderClient:
             return message.HasField(field_name)
         except ValueError:
             return False
+
+    @staticmethod
+    def _read_text_field(*objects, field_name: str) -> str:
+        for obj in objects:
+            if obj is None:
+                continue
+            value = getattr(obj, field_name, None)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return ""

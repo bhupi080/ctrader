@@ -1,3 +1,5 @@
+import re
+
 from fastapi import HTTPException
 
 from app.schemas.trades import (
@@ -21,6 +23,7 @@ from app.schemas.trades import (
     TakeProfitResponse,
 )
 from app.services.ctrader import CTraderGateway
+from app.services.exceptions import CTraderServiceError
 from app.services.signal_account_map import SignalAccountMap, SignalAccountMapError
 from app.services.symbol_mapping import SymbolMapping
 
@@ -39,30 +42,50 @@ class TradeService:
         self._fxpro_symbol_mapping_enabled = fxpro_symbol_mapping_enabled
 
     def place_trade(self, payload: PlaceTradeRequest) -> PlaceTradeResponse:
+        action, direction, signal_id = self._parse_signal(payload.signal)
         account_id = self._resolve_account_id(payload.signal_type)
-        symbol_name = self._map_symbol_if_enabled(payload.symbol_name)
-        symbol_id, resolved_symbol_name = self._gateway.resolve_symbol_id(
-            account_id,
-            symbol_name,
-        )
-        symbol = self._gateway.get_symbol_details(account_id, symbol_id)
-        volume_units = self._gateway.lots_to_volume_units(symbol, payload.volume_lots)
+        if action == "open":
+            symbol_name = self._map_symbol_if_enabled(payload.symbol_name)
+            symbol_id, resolved_symbol_name = self._gateway.resolve_symbol_id(
+                account_id,
+                symbol_name,
+            )
+            symbol = self._gateway.get_symbol_details(account_id, symbol_id)
+            volume_units = self._gateway.lots_to_volume_units(symbol, payload.volume_lots)
+            side = "BUY" if direction == "long" else "SELL"
+            order_comment = self._build_order_comment(payload.signal, signal_id, payload.comment)
 
-        execution = self._gateway.place_market_order(
-            account_id=account_id,
-            symbol_id=symbol_id,
-            side=payload.side,
-            volume=volume_units,
-            label=payload.label,
-            comment=payload.comment,
-        )
+            execution = self._gateway.place_market_order(
+                account_id=account_id,
+                symbol_id=symbol_id,
+                side=side,
+                volume=volume_units,
+                label=payload.label,
+                comment=order_comment,
+            )
+            return PlaceTradeResponse(
+                account_id=account_id,
+                action="OPEN",
+                signal=payload.signal,
+                signal_id=signal_id,
+                symbol_id=symbol_id,
+                symbol_name=resolved_symbol_name,
+                volume_lots=payload.volume_lots,
+                volume_units=volume_units,
+                execution=execution,
+            )
+
+        try:
+            closed_tickets, executions = self._gateway.close_position_by_comment_id(account_id, signal_id)
+        except CTraderServiceError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         return PlaceTradeResponse(
             account_id=account_id,
-            symbol_id=symbol_id,
-            symbol_name=resolved_symbol_name,
-            volume_lots=payload.volume_lots,
-            volume_units=volume_units,
-            execution=execution,
+            action="CLOSE",
+            signal=payload.signal,
+            signal_id=signal_id,
+            tickets=closed_tickets,
+            execution=executions,
         )
 
     def close_all_trades(self, payload: CloseAllTradesRequest) -> CloseAllTradesResponse:
@@ -204,3 +227,29 @@ class TradeService:
         if not self._fxpro_symbol_mapping_enabled:
             return symbol_name
         return self._symbol_mapping.map_symbol(symbol_name)
+
+    @staticmethod
+    def _parse_signal(signal: str) -> tuple[str, str, str]:
+        match = re.match(
+            r"^(open|close)\s+(long|short)\s*\|\s*id=(.+)$",
+            signal.strip(),
+            re.IGNORECASE,
+        )
+        if match is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid signal format. Expected '<open/close> <long/short> | id=...'.",
+            )
+        action = match.group(1).lower()
+        direction = match.group(2).lower()
+        signal_id = match.group(3).strip()
+        if not signal_id:
+            raise HTTPException(status_code=400, detail="Signal id must not be empty.")
+        return action, direction, signal_id
+
+    @staticmethod
+    def _build_order_comment(signal: str, signal_id: str, user_comment: str | None) -> str:
+        base_comment = f"{signal.split('|')[0].strip()} | id={signal_id}"
+        if user_comment:
+            return f"{base_comment} | {user_comment}"
+        return base_comment

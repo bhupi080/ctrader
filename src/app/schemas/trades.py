@@ -1,24 +1,45 @@
+import re
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class PlaceTradeRequest(BaseModel):
     signal_type: str = Field(..., min_length=1, description="Signal type mapped to cTrader account ID.")
     symbol_name: str = Field(..., min_length=1, description="cTrader symbol name, e.g. EURUSD.")
-    side: Literal["BUY", "SELL"] = Field(..., description="Trade side.")
+    signal: str = Field(
+        ...,
+        min_length=1,
+        description="TradingView signal string, e.g. 'open long | id=L_123'.",
+    )
     volume_lots: float = Field(..., gt=0, description="Trade volume in lots, e.g. 1 or 0.1.")
     label: str | None = Field(default=None, max_length=50)
     comment: str | None = Field(default=None, max_length=100)
 
+    @field_validator("signal")
+    @classmethod
+    def validate_signal(cls, value: str) -> str:
+        pattern = r"^(open long|open short|close long|close short)\s*\|\s*id=.+$"
+        cleaned = value.strip()
+        if not re.match(pattern, cleaned, re.IGNORECASE):
+            raise ValueError(
+                "signal must be like 'open long | id=...' or 'close short | id=...'."
+            )
+        return cleaned
+
 
 class PlaceTradeResponse(BaseModel):
     account_id: int
-    symbol_id: int
-    symbol_name: str
-    volume_lots: float
-    volume_units: int
-    execution: dict
+    action: Literal["OPEN", "CLOSE"]
+    signal: str
+    signal_id: str
+    symbol_id: int | None = None
+    symbol_name: str | None = None
+    volume_lots: float | None = None
+    volume_units: int | None = None
+    ticket: int | None = None
+    tickets: list[int] | None = None
+    execution: dict | list[dict]
 
 
 class CloseAllTradesResponse(BaseModel):
