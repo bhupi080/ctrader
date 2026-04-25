@@ -51,7 +51,7 @@ class TradeService:
         execution = self._gateway.place_market_order(
             account_id=account_id,
             symbol_id=symbol_id,
-            side=payload.side,
+            side=payload.signal,
             volume=volume_units,
             label=payload.label,
             comment=payload.comment,

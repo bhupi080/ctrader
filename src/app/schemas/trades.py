@@ -1,15 +1,30 @@
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class PlaceTradeRequest(BaseModel):
     signal_type: str = Field(..., min_length=1, description="Signal type mapped to cTrader account ID.")
     symbol_name: str = Field(..., min_length=1, description="cTrader symbol name, e.g. EURUSD.")
-    side: Literal["BUY", "SELL"] = Field(..., description="Trade side.")
+    signal: Literal["BUY", "SELL"] = Field(
+        ...,
+        description="Trade signal. Accepts buy/sell/long/short in any case.",
+    )
     volume_lots: float = Field(..., gt=0, description="Trade volume in lots, e.g. 1 or 0.1.")
     label: str | None = Field(default=None, max_length=50)
     comment: str | None = Field(default=None, max_length=100)
+
+    @field_validator("signal", mode="before")
+    @classmethod
+    def normalize_signal(cls, value: Any) -> Any:
+        if not isinstance(value, str):
+            return value
+        normalized = value.strip().upper()
+        if normalized in {"BUY", "LONG"}:
+            return "BUY"
+        if normalized in {"SELL", "SHORT"}:
+            return "SELL"
+        return value
 
 
 class PlaceTradeResponse(BaseModel):

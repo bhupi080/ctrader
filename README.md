@@ -70,12 +70,14 @@ Server runs at `http://localhost:80` by default.
 {
   "signal_type": "K",
   "symbol_name": "EURUSD",
-  "side": "BUY",
+  "signal": "BUY",
   "volume_lots": 0.1,
   "label": "test-order",
   "comment": "api test"
 }
 ```
+
+`signal` is case-insensitive and also accepts `long`/`short` aliases.
 
 When `FXPRO_SYMBOL_MAPPING_ENABLED=true`, symbol-based endpoints map source symbols
 using `SYMBOL_MAPPING_PATH` before resolution (e.g. `BTCUSD -> BITCOIN`).
