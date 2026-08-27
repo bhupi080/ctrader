@@ -10,6 +10,6 @@ def main() -> None:
         app_dir="src",
     )
 
-
+print("hi")
 if __name__ == "__main__":
     main()
